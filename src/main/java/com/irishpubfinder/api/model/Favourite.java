@@ -1,0 +1,53 @@
+package com.irishpubfinder.api.model;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(
+    name = "favourites",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "place_id"})
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Favourite {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "user_id", nullable = false)
+    private String userId;
+
+    @Column(name = "place_id", nullable = false)
+    private String placeId;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false)
+    private String address;
+
+    private Double latitude;
+    private Double longitude;
+    private Double rating;
+
+    @Column(name = "maps_url")
+    private String mapsUrl;
+
+    @Column(name = "photo_url")
+    private String photoUrl;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    void prePersist() {
+        createdAt = LocalDateTime.now();
+    }
+}
