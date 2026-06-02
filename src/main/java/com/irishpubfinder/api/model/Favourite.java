@@ -37,10 +37,10 @@ public class Favourite {
     private Double longitude;
     private Double rating;
 
-    @Column(name = "maps_url")
+    @Column(name = "maps_url", length = 1024)
     private String mapsUrl;
 
-    @Column(name = "photo_url")
+    @Column(name = "photo_url", length = 1024)
     private String photoUrl;
 
     @Column(name = "created_at", nullable = false, updatable = false)
