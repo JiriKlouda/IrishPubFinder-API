@@ -18,6 +18,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody(ex.getMessage()));
     }
 
+    @ExceptionHandler(VisitNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleVisitNotFound(VisitNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorBody(ex.getMessage()));
+    }
+
     @ExceptionHandler(DuplicateFavouriteException.class)
     public ResponseEntity<Map<String, Object>> handleDuplicate(DuplicateFavouriteException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorBody(ex.getMessage()));
