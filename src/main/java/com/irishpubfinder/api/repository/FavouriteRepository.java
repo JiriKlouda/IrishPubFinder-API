@@ -15,4 +15,6 @@ public interface FavouriteRepository extends JpaRepository<Favourite, Long> {
     boolean existsByUserIdAndPlaceId(String userId, String placeId);
 
     void deleteByUserIdAndPlaceId(String userId, String placeId);
+
+    long countByUserId(String userId);
 }

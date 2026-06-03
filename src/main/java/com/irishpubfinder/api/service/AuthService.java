@@ -29,14 +29,17 @@ public class AuthService {
         if (userRepository.existsByEmail(email)) {
             throw new EmailAlreadyExistsException("An account with this email already exists");
         }
+        String displayName = (request.displayName() != null && !request.displayName().isBlank())
+            ? request.displayName().trim() : null;
         User user = User.builder()
             .id(UUID.randomUUID().toString())
             .email(email)
             .passwordHash(passwordEncoder.encode(request.password()))
+            .displayName(displayName)
             .build();
         userRepository.save(user);
         String token = jwtUtil.generateToken(user.getId(), user.getEmail());
-        return new AuthResponse(token, user.getId(), user.getEmail());
+        return new AuthResponse(token, user.getId(), user.getEmail(), user.getDisplayName());
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -47,6 +50,6 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
         String token = jwtUtil.generateToken(user.getId(), user.getEmail());
-        return new AuthResponse(token, user.getId(), user.getEmail());
+        return new AuthResponse(token, user.getId(), user.getEmail(), user.getDisplayName());
     }
 }
