@@ -7,47 +7,44 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/users/{userId}/favourites")
+@RequestMapping("/api/favourites")
 @RequiredArgsConstructor
 public class FavouriteController {
 
     private final FavouriteService service;
 
-    // GET /api/users/{userId}/favourites
     @GetMapping
-    public ResponseEntity<List<Favourite>> getFavourites(@PathVariable String userId) {
+    public ResponseEntity<List<Favourite>> getFavourites(@AuthenticationPrincipal String userId) {
         return ResponseEntity.ok(service.getFavourites(userId));
     }
 
-    // POST /api/users/{userId}/favourites
     @PostMapping
     public ResponseEntity<Favourite> addFavourite(
-        @PathVariable String userId,
+        @AuthenticationPrincipal String userId,
         @Valid @RequestBody FavouriteRequest request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.addFavourite(userId, request));
     }
 
-    // DELETE /api/users/{userId}/favourites/{placeId}
     @DeleteMapping("/{placeId}")
     public ResponseEntity<Void> removeFavourite(
-        @PathVariable String userId,
+        @AuthenticationPrincipal String userId,
         @PathVariable String placeId
     ) {
         service.removeFavourite(userId, placeId);
         return ResponseEntity.noContent().build();
     }
 
-    // GET /api/users/{userId}/favourites/{placeId}
     @GetMapping("/{placeId}")
     public ResponseEntity<Map<String, Boolean>> checkFavourite(
-        @PathVariable String userId,
+        @AuthenticationPrincipal String userId,
         @PathVariable String placeId
     ) {
         return ResponseEntity.ok(Map.of("isFavourite", service.isFavourite(userId, placeId)));
