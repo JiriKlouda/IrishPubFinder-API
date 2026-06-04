@@ -8,6 +8,6 @@ public record LeaderboardEntry(
     String displayName,
     boolean isCurrentUser,
     int visitCount,
-    int favouriteCount,
+    int badgesEarned,
     List<CoordDto> visitCoordinates
 ) {}

@@ -1,10 +1,12 @@
 package com.irishpubfinder.api.repository;
 
 import com.irishpubfinder.api.model.Visit;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface VisitRepository extends JpaRepository<Visit, Long> {
@@ -15,4 +17,12 @@ public interface VisitRepository extends JpaRepository<Visit, Long> {
 
     @Query("SELECT COUNT(DISTINCT v.countryCode) FROM Visit v WHERE v.userId = :userId AND v.countryCode IS NOT NULL")
     long countDistinctCountriesByUserId(@Param("userId") String userId);
+
+    @Query("SELECT DISTINCT v.countryCode FROM Visit v WHERE v.userId = :userId AND v.countryCode IS NOT NULL")
+    List<String> findDistinctCountryCodesByUserId(@Param("userId") String userId);
+
+    @Query("SELECT v FROM Visit v WHERE v.userId IN :userIds AND v.createdAt < :before ORDER BY v.createdAt DESC")
+    List<Visit> findPageByUserIds(@Param("userIds") List<String> userIds,
+                                  @Param("before") LocalDateTime before,
+                                  Pageable pageable);
 }

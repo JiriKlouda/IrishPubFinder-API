@@ -15,6 +15,7 @@ import java.util.List;
 public class VisitService {
 
     private final VisitRepository repository;
+    private final BadgeService badgeService;
 
     public List<Visit> getVisits(String userId) {
         return repository.findByUserIdOrderByCreatedAtDesc(userId);
@@ -40,7 +41,9 @@ public class VisitService {
             .photoUrl(request.photoUrl())
             .countryCode(request.countryCode())
             .build();
-        return repository.save(visit);
+        Visit saved = repository.save(visit);
+        badgeService.checkAndRecordNewBadges(userId);
+        return saved;
     }
 
     @Transactional

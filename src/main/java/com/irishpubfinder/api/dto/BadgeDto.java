@@ -9,5 +9,6 @@ public record BadgeDto(
     String category,
     boolean earned,
     int progress,
-    int target
+    int target,
+    boolean pro
 ) {}

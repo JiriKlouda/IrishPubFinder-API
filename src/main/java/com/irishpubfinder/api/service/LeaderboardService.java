@@ -7,6 +7,7 @@ import com.irishpubfinder.api.dto.LeaderboardEntry;
 import com.irishpubfinder.api.model.Friendship;
 import com.irishpubfinder.api.model.User;
 import com.irishpubfinder.api.model.Visit;
+import com.irishpubfinder.api.repository.BadgeEventRepository;
 import com.irishpubfinder.api.repository.FavouriteRepository;
 import com.irishpubfinder.api.repository.FriendshipRepository;
 import com.irishpubfinder.api.repository.GuinnessReviewRepository;
@@ -28,6 +29,7 @@ public class LeaderboardService {
     private final FavouriteRepository favouriteRepository;
     private final GuinnessReviewRepository guinnessReviewRepository;
     private final BadgeService badgeService;
+    private final BadgeEventRepository badgeEventRepository;
 
     public List<LeaderboardEntry> getLeaderboard(String currentUserId) {
         User currentUser = userRepository.findById(currentUserId).orElseThrow();
@@ -79,7 +81,7 @@ public class LeaderboardService {
 
     private LeaderboardEntry buildEntry(User user, boolean isCurrentUser) {
         List<Visit> visits = visitRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
-        long favouriteCount = favouriteRepository.countByUserId(user.getId());
+        long badgesEarned = badgeEventRepository.countByUserId(user.getId());
 
         List<CoordDto> coords = visits.stream()
             .filter(v -> v.getLatitude() != null && v.getLongitude() != null)
@@ -92,7 +94,7 @@ public class LeaderboardService {
             user.getDisplayName(),
             isCurrentUser,
             visits.size(),
-            (int) favouriteCount,
+            (int) badgesEarned,
             coords
         );
     }
