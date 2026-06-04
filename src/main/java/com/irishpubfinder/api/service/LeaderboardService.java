@@ -1,12 +1,15 @@
 package com.irishpubfinder.api.service;
 
 import com.irishpubfinder.api.dto.CoordDto;
+import com.irishpubfinder.api.dto.HeadToHeadDto;
+import com.irishpubfinder.api.dto.HeadToHeadEntry;
 import com.irishpubfinder.api.dto.LeaderboardEntry;
 import com.irishpubfinder.api.model.Friendship;
 import com.irishpubfinder.api.model.User;
 import com.irishpubfinder.api.model.Visit;
 import com.irishpubfinder.api.repository.FavouriteRepository;
 import com.irishpubfinder.api.repository.FriendshipRepository;
+import com.irishpubfinder.api.repository.GuinnessReviewRepository;
 import com.irishpubfinder.api.repository.UserRepository;
 import com.irishpubfinder.api.repository.VisitRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,8 @@ public class LeaderboardService {
     private final UserRepository userRepository;
     private final VisitRepository visitRepository;
     private final FavouriteRepository favouriteRepository;
+    private final GuinnessReviewRepository guinnessReviewRepository;
+    private final BadgeService badgeService;
 
     public List<LeaderboardEntry> getLeaderboard(String currentUserId) {
         User currentUser = userRepository.findById(currentUserId).orElseThrow();
@@ -41,6 +46,35 @@ public class LeaderboardService {
         }
 
         return entries;
+    }
+
+    public HeadToHeadDto getHeadToHead(String currentUserId, String friendId) {
+        User currentUser = userRepository.findById(currentUserId).orElseThrow();
+        User friend = userRepository.findById(friendId).orElseThrow();
+        return new HeadToHeadDto(buildH2HEntry(currentUser), buildH2HEntry(friend));
+    }
+
+    private HeadToHeadEntry buildH2HEntry(User user) {
+        List<Visit> visits = visitRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+        long favouriteCount = favouriteRepository.countByUserId(user.getId());
+        long guinnessCount = guinnessReviewRepository.countByUserId(user.getId());
+        long badgesEarned = badgeService.getBadges(user.getId()).stream().filter(b -> b.earned()).count();
+
+        List<CoordDto> coords = visits.stream()
+            .filter(v -> v.getLatitude() != null && v.getLongitude() != null)
+            .map(v -> new CoordDto(v.getLatitude(), v.getLongitude()))
+            .toList();
+
+        return new HeadToHeadEntry(
+            user.getId(),
+            user.getEmail(),
+            user.getDisplayName(),
+            visits.size(),
+            (int) favouriteCount,
+            (int) guinnessCount,
+            (int) badgesEarned,
+            coords
+        );
     }
 
     private LeaderboardEntry buildEntry(User user, boolean isCurrentUser) {

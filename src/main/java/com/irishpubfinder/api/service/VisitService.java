@@ -38,6 +38,7 @@ public class VisitService {
             .rating(request.rating())
             .mapsUrl(request.mapsUrl())
             .photoUrl(request.photoUrl())
+            .countryCode(request.countryCode())
             .build();
         return repository.save(visit);
     }

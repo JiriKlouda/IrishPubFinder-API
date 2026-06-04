@@ -30,9 +30,31 @@ public class FeedService {
     }
 
     public List<FeedItemDto> getFeed(String currentUserId) {
-        List<Friendship> friendships = friendshipRepository.findAcceptedFriendships(currentUserId);
         List<FeedItemDto> items = new ArrayList<>();
 
+        // Include the current user's own activity first
+        userRepository.findById(currentUserId).ifPresent(self -> {
+            List<Visit> selfVisits = visitRepository.findByUserIdOrderByCreatedAtDesc(currentUserId);
+            int limit = Math.min(selfVisits.size(), MAX_VISITS_PER_FRIEND);
+            for (int i = 0; i < limit; i++) {
+                Visit v = selfVisits.get(i);
+                items.add(new FeedItemDto(
+                        self.getId(),
+                        self.getEmail(),
+                        self.getDisplayName(),
+                        v.getPlaceId(),
+                        v.getName(),
+                        v.getAddress(),
+                        v.getLatitude(),
+                        v.getLongitude(),
+                        v.getPhotoUrl(),
+                        v.getCreatedAt()
+                ));
+            }
+        });
+
+        // Include friends' activity
+        List<Friendship> friendships = friendshipRepository.findAcceptedFriendships(currentUserId);
         for (Friendship friendship : friendships) {
             String friendId = friendship.getRequesterId().equals(currentUserId)
                     ? friendship.getAddresseeId()

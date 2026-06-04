@@ -1,11 +1,13 @@
 package com.irishpubfinder.api.controller;
 
+import com.irishpubfinder.api.dto.HeadToHeadDto;
 import com.irishpubfinder.api.dto.LeaderboardEntry;
 import com.irishpubfinder.api.service.LeaderboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,5 +23,12 @@ public class LeaderboardController {
     @GetMapping
     public ResponseEntity<List<LeaderboardEntry>> getLeaderboard(@AuthenticationPrincipal String userId) {
         return ResponseEntity.ok(service.getLeaderboard(userId));
+    }
+
+    @GetMapping("/head-to-head/{friendId}")
+    public ResponseEntity<HeadToHeadDto> getHeadToHead(
+            @AuthenticationPrincipal String userId,
+            @PathVariable String friendId) {
+        return ResponseEntity.ok(service.getHeadToHead(userId, friendId));
     }
 }

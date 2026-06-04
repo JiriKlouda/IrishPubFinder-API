@@ -11,5 +11,6 @@ public record VisitRequest(
     @NotNull Double longitude,
     Double rating,
     String mapsUrl,
-    String photoUrl
+    String photoUrl,
+    String countryCode
 ) {}

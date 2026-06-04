@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(
-    name = "visits",
+    name = "guinness_reviews",
     uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "place_id"})
 )
 @Getter
@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Visit {
+public class GuinnessReview {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,29 +28,34 @@ public class Visit {
     private String placeId;
 
     @Column(nullable = false)
-    private String name;
+    private Integer creaminess;
 
     @Column(nullable = false)
-    private String address;
+    private Integer temperature;
 
-    private Double latitude;
-    private Double longitude;
-    private Double rating;
+    @Column(nullable = false)
+    private Integer quality;
 
-    @Column(name = "country_code", length = 10)
-    private String countryCode;
+    @Column(nullable = false)
+    private Integer price;
 
-    @Column(name = "maps_url", length = 1024)
-    private String mapsUrl;
-
-    @Column(name = "photo_url", length = 1024)
-    private String photoUrl;
+    @Column(nullable = false)
+    private Integer overall;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @PrePersist
     void prePersist() {
         createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    void preUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
