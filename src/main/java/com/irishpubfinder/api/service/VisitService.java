@@ -65,6 +65,7 @@ public class VisitService {
             Visit v = byPlaceId.get(item.placeId());
             if (v == null) continue;
             boolean updated = false;
+            if (item.countryCode() != null && !item.countryCode().equals(v.getCountryCode())) { v.setCountryCode(item.countryCode()); updated = true; }
             if (item.continent() != null && !item.continent().equals(v.getContinent())) { v.setContinent(item.continent()); updated = true; }
             if (item.irishCounty() != null && !item.irishCounty().equals(v.getIrishCounty())) { v.setIrishCounty(item.irishCounty()); updated = true; }
             if (item.usState() != null && !item.usState().equals(v.getUsState())) { v.setUsState(item.usState()); updated = true; }

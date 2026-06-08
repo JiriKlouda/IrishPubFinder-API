@@ -28,7 +28,7 @@ public class GooglePlacesService {
     private static final String GOOGLE_HOST = "maps.googleapis.com";
     private static final String PLACES_BASE_PATH = "/maps/api/place";
     private static final String PLACE_DETAILS_FIELDS =
-            "geometry,formatted_address,name,formatted_phone_number,website,opening_hours,rating";
+            "geometry,formatted_address,name,formatted_phone_number,website,opening_hours,rating,address_components";
 
     @Value("${google.places.api.key}")
     private String apiKey;
