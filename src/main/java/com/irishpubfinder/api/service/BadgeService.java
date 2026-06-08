@@ -49,7 +49,7 @@ public class BadgeService {
         // Continent Explorer
         new BadgeDef("local_explorer",   "Local Explorer",   "Visit pubs on your first continent",            "globe",          "#818cf8", "continents", 1,   false),
         new BadgeDef("continent_hopper", "Continent Hopper", "Visit pubs on 3 different continents",          "globe-americas", "#6366f1", "continents", 3,   false),
-        new BadgeDef("world_wanderer",   "World Wanderer",   "Visit pubs on all 7 continents",                "satellite",      "#4f46e5", "continents", 7,   false),
+        new BadgeDef("world_wanderer",   "World Wanderer",   "Visit pubs on all 6 inhabited continents",      "satellite",      "#4f46e5", "continents", 6,   false),
         // American Trailblazer (Pro)
         new BadgeDef("state_visitor",   "State Visitor",    "Visit a pub in your first US state",             "flag-usa",       "#f87171", "us_states",  1,   true),
         new BadgeDef("road_tripper",    "Road Tripper",     "Visit pubs in 10 different US states",           "route",          "#ef4444", "us_states",  10,  true),
