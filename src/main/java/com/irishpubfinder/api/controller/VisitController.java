@@ -1,5 +1,6 @@
 package com.irishpubfinder.api.controller;
 
+import com.irishpubfinder.api.dto.VisitGeoRequest;
 import com.irishpubfinder.api.dto.VisitRequest;
 import com.irishpubfinder.api.model.Visit;
 import com.irishpubfinder.api.service.VisitService;
@@ -31,6 +32,15 @@ public class VisitController {
         @Valid @RequestBody VisitRequest request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.addVisit(userId, request));
+    }
+
+    @PutMapping("/geo")
+    public ResponseEntity<Void> enrichGeo(
+        @AuthenticationPrincipal String userId,
+        @RequestBody List<VisitGeoRequest> items
+    ) {
+        service.enrichGeo(userId, items);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{placeId}")

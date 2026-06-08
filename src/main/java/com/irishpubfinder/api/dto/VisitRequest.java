@@ -12,5 +12,9 @@ public record VisitRequest(
     Double rating,
     String mapsUrl,
     String photoUrl,
-    String countryCode
+    String countryCode,
+    String continent,
+    String irishCounty,
+    String usState,
+    String city
 ) {}

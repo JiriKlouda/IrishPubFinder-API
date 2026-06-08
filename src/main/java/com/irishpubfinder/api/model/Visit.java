@@ -40,6 +40,19 @@ public class Visit {
     @Column(name = "country_code", length = 10)
     private String countryCode;
 
+    // Geo-enrichment computed client-side (where the polygon data lives)
+    @Column(length = 4)
+    private String continent;
+
+    @Column(name = "irish_county", length = 64)
+    private String irishCounty;
+
+    @Column(name = "us_state", length = 64)
+    private String usState;
+
+    @Column(length = 128)
+    private String city;
+
     @Column(name = "maps_url", length = 1024)
     private String mapsUrl;
 

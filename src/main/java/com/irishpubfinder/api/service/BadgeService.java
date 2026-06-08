@@ -9,10 +9,7 @@ import com.irishpubfinder.api.repository.VisitRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -65,24 +62,6 @@ public class BadgeService {
         new BadgeDef("cosmopolitan",    "Cosmopolitan",     "Visit pubs in 50 different cities",              "map-pin",        "#b45309", "cities",     50,  true)
     );
 
-    private static final Map<String, String> COUNTRY_TO_CONTINENT;
-    static {
-        COUNTRY_TO_CONTINENT = new HashMap<>();
-        for (String c : new String[]{"IE","GB","FR","DE","ES","IT","NL","BE","PT","AT","CH","SE","NO","DK","FI","PL","CZ","HU","RO","BG","HR","SI","SK","EE","LV","LT","GR","CY","MT","LU","IS","ME","RS","BA","MK","AL","UA","MD","BY","RU","GE","AM","AZ","TR","AD","MC","SM","LI","VA","XK"})
-            COUNTRY_TO_CONTINENT.put(c, "EU");
-        for (String c : new String[]{"US","CA","MX","GT","BZ","HN","SV","NI","CR","PA","CU","JM","HT","DO","TT","BB","BS","PR","TC","KY","VG","VI","AW","CW","SX","DM","LC","VC","GD","AG","KN"})
-            COUNTRY_TO_CONTINENT.put(c, "NA");
-        for (String c : new String[]{"BR","AR","CL","CO","PE","VE","EC","BO","PY","UY","GY","SR","GF","FK"})
-            COUNTRY_TO_CONTINENT.put(c, "SA");
-        for (String c : new String[]{"CN","JP","KR","IN","TH","VN","SG","MY","ID","PH","HK","TW","AE","SA","IL","JO","LB","IQ","IR","PK","AF","BD","LK","NP","BT","MV","KW","QA","BH","OM","YE","KZ","UZ","TM","TJ","KG","MN","MM","KH","LA","SY","PS"})
-            COUNTRY_TO_CONTINENT.put(c, "AS");
-        for (String c : new String[]{"NG","ZA","EG","ET","GH","KE","TZ","MA","DZ","TN","LY","CM","CI","SN","ZM","ZW","UG","RW","MZ","AO","MG","MW","ML","MR","MU","BJ","BF","BI","CV","CF","TD","CG","CD","DJ","GA","GN","GW","LS","LR","NE","ST","SC","SL","SO","SS","SD","SZ","TG","ER"})
-            COUNTRY_TO_CONTINENT.put(c, "AF");
-        for (String c : new String[]{"AU","NZ","FJ","PG","SB","VU","WS","TO","KI","FM","MH","PW","NR","TV","CK"})
-            COUNTRY_TO_CONTINENT.put(c, "OC");
-        COUNTRY_TO_CONTINENT.put("AQ", "AN");
-    }
-
     private final VisitRepository visitRepository;
     private final GuinnessReviewRepository guinnessReviewRepository;
     private final FriendshipRepository friendshipRepository;
@@ -99,17 +78,15 @@ public class BadgeService {
     }
 
     private int[] computeProgressCounts(String userId) {
-        int visitCount    = (int) visitRepository.countByUserId(userId);
-        int countryCount  = (int) visitRepository.countDistinctCountriesByUserId(userId);
-        int guinnessCount = (int) guinnessReviewRepository.countByUserId(userId);
-        int friendCount   = friendshipRepository.findAcceptedFriendships(userId).size();
-        int continentCount = (int) visitRepository.findDistinctCountryCodesByUserId(userId).stream()
-            .map(code -> COUNTRY_TO_CONTINENT.get(code.toUpperCase()))
-            .filter(Objects::nonNull)
-            .distinct()
-            .count();
-        // County, state, city counts require geo-enrichment (not yet stored in visits table)
-        return new int[]{visitCount, countryCount, guinnessCount, friendCount, continentCount, 0, 0, 0};
+        int visitCount     = (int) visitRepository.countByUserId(userId);
+        int countryCount   = (int) visitRepository.countDistinctCountriesByUserId(userId);
+        int guinnessCount  = (int) guinnessReviewRepository.countByUserId(userId);
+        int friendCount    = friendshipRepository.findAcceptedFriendships(userId).size();
+        int continentCount = (int) visitRepository.countDistinctContinentsByUserId(userId);
+        int countyCount    = (int) visitRepository.countDistinctIrishCountiesByUserId(userId);
+        int stateCount     = (int) visitRepository.countDistinctUsStatesByUserId(userId);
+        int cityCount      = (int) visitRepository.countDistinctCitiesByUserId(userId);
+        return new int[]{visitCount, countryCount, guinnessCount, friendCount, continentCount, countyCount, stateCount, cityCount};
     }
 
     private int progressForDef(BadgeDef def, int[] counts) {
