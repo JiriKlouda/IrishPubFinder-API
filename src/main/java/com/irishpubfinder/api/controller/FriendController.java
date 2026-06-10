@@ -1,5 +1,7 @@
 package com.irishpubfinder.api.controller;
 
+import com.irishpubfinder.api.dto.ContactLookupResult;
+import com.irishpubfinder.api.dto.ContactsLookupRequest;
 import com.irishpubfinder.api.dto.FriendResponse;
 import com.irishpubfinder.api.dto.FriendSendRequest;
 import com.irishpubfinder.api.dto.PendingRequestResponse;
@@ -55,5 +57,13 @@ public class FriendController {
     ) {
         service.declineOrRemove(userId, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/find-by-phone")
+    public ResponseEntity<List<ContactLookupResult>> findByPhone(
+        @AuthenticationPrincipal String userId,
+        @RequestBody ContactsLookupRequest request
+    ) {
+        return ResponseEntity.ok(service.findByPhoneNumbers(request));
     }
 }

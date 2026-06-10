@@ -1,5 +1,6 @@
 package com.irishpubfinder.api.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.irishpubfinder.api.exception.PlacesApiException;
 import com.irishpubfinder.api.model.PlaceDetailsCache;
 import com.irishpubfinder.api.model.PlaceSearchCache;
@@ -8,32 +9,38 @@ import com.irishpubfinder.api.repository.PlaceSearchCacheRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
 public class GooglePlacesService {
 
-    private static final String GOOGLE_HOST = "maps.googleapis.com";
-    private static final String PLACES_BASE_PATH = "/maps/api/place";
-    private static final String PLACE_DETAILS_FIELDS =
-            "geometry,formatted_address,name,formatted_phone_number,website,opening_hours,rating,address_components";
+    private static final String API_BASE    = "https://places.googleapis.com/v1";
+    private static final String PLACES_BASE = API_BASE + "/places";
+
+    private static final String SEARCH_FIELD_MASK =
+            "places.id,places.displayName,places.formattedAddress,places.location," +
+            "places.rating,places.userRatingCount,places.regularOpeningHours," +
+            "places.photos,places.priceLevel,places.types,places.businessStatus,nextPageToken";
+
+    private static final String DETAILS_FIELD_MASK =
+            "id,displayName,formattedAddress,location,rating,regularOpeningHours," +
+            "nationalPhoneNumber,websiteUri,addressComponents,editorialSummary,reviews";
 
     @Value("${google.places.api.key}")
     private String apiKey;
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final PlaceSearchCacheRepository searchRepo;
     private final PlaceDetailsCacheRepository detailsRepo;
 
@@ -54,12 +61,15 @@ public class GooglePlacesService {
 
     public String getNearbyPubs(double lat, double lng, int radius, String pageToken) {
         if (pageToken == null || pageToken.isBlank()) {
-            String cellKey = String.format("%.2f,%.2f,%d", lat, lng, radius);
+            // "v2:" prefix distinguishes new-API cache entries from legacy-format entries
+            String cellKey = String.format("v2:%.2f,%.2f,%d", lat, lng, radius);
             return searchRepo.findValid(cellKey, Instant.now())
                     .map(PlaceSearchCache::getResponseJson)
                     .orElseGet(() -> {
                         String json = callTextSearch(lat, lng, radius, null);
-                        if (isSuccess(json)) {
+                        // Only cache complete result sets — if there's a nextPageToken the
+                        // token would expire long before the 24-hour cache TTL
+                        if (isSuccess(json) && !json.contains("\"nextPageToken\"")) {
                             PlaceSearchCache entry = new PlaceSearchCache();
                             entry.setCellKey(cellKey);
                             entry.setResponseJson(json);
@@ -73,14 +83,16 @@ public class GooglePlacesService {
     }
 
     public String getPlaceDetails(String placeId, String sessionToken) {
-        return detailsRepo.findValid(placeId, Instant.now())
+        // "v2:" prefix isolates new-API cached responses from legacy ones
+        String cacheKey = "v2:" + placeId;
+        return detailsRepo.findValid(cacheKey, Instant.now())
                 .map(PlaceDetailsCache::getResponseJson)
                 .orElseGet(() -> {
                     String json = callPlaceDetails(placeId, sessionToken);
                     if (isSuccess(json)) {
-                        PlaceDetailsCache entry = detailsRepo.findByPlaceId(placeId)
+                        PlaceDetailsCache entry = detailsRepo.findByPlaceId(cacheKey)
                                 .orElse(new PlaceDetailsCache());
-                        entry.setPlaceId(placeId);
+                        entry.setPlaceId(cacheKey);
                         entry.setResponseJson(json);
                         entry.setExpiresAt(Instant.now().plus(7, ChronoUnit.DAYS));
                         detailsRepo.save(entry);
@@ -90,15 +102,13 @@ public class GooglePlacesService {
     }
 
     /**
-     * Fetches raw photo bytes from the Google Places Photo API.
-     * Returns [byte[], contentType]. RestTemplate follows Google's 302 redirect automatically.
+     * Fetches raw photo bytes. photoName is the full resource path returned by the new
+     * Places API, e.g. "places/{id}/photos/{token}". Google responds with a redirect to
+     * the CDN URL; RestTemplate follows it automatically.
      */
-    public Object[] getPhotoBytes(String photoRef, int maxwidth) {
-        String query = "photoreference=" + encode(photoRef)
-                + "&maxwidth=" + maxwidth
-                + "&key=" + apiKey;
-        URI uri = buildUri(PLACES_BASE_PATH + "/photo", query);
-        log.info("Google Places Photo → fetching (ref length={})", photoRef.length());
+    public Object[] getPhotoBytes(String photoName, int maxwidth) {
+        URI uri = URI.create(API_BASE + "/" + photoName + "/media?maxWidthPx=" + maxwidth + "&key=" + apiKey);
+        log.info("Google Places Photo → fetching (name={})", photoName);
         try {
             ResponseEntity<byte[]> resp =
                     restTemplate.exchange(uri, HttpMethod.GET, null, byte[].class);
@@ -113,61 +123,91 @@ public class GooglePlacesService {
         }
     }
 
-    /** Only cache responses where Google confirmed success — never cache error/denied responses. */
-    private static boolean isSuccess(String json) {
-        return json.contains("\"status\":\"OK\"") || json.contains("\"status\":\"ZERO_RESULTS\"");
-    }
-
     public String getAutocomplete(String input, String sessionToken) {
-        String query = "input=" + encode(input)
-                + "&types=" + encode("(regions)")
-                + "&language=en"
-                + (sessionToken != null && !sessionToken.isBlank() ? "&sessiontoken=" + encode(sessionToken) : "")
-                + "&key=" + apiKey;
-        return callGoogle(buildUri(PLACES_BASE_PATH + "/autocomplete/json", query));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("input", input);
+        body.put("languageCode", "en");
+        if (sessionToken != null && !sessionToken.isBlank()) {
+            body.put("sessionToken", sessionToken);
+        }
+        return postToPlaces(":autocomplete", body, null);
     }
 
     private String callTextSearch(double lat, double lng, int radius, String pageToken) {
-        // Google requires pagetoken requests to contain ONLY pagetoken + key.
-        // Including query/location/radius alongside a pagetoken causes INVALID_REQUEST.
-        String query = (pageToken != null && !pageToken.isBlank())
-                ? "pagetoken=" + encode(pageToken) + "&key=" + apiKey
-                : "query=" + encode("irish pubs near me")
-                        + "&location=" + lat + "," + lng
-                        + "&radius=" + radius
-                        + "&key=" + apiKey;
-        return callGoogle(buildUri(PLACES_BASE_PATH + "/textsearch/json", query));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("textQuery", "irish pub");
+        body.put("pageSize", 20);
+
+        Map<String, Object> center = new LinkedHashMap<>();
+        center.put("latitude", lat);
+        center.put("longitude", lng);
+        Map<String, Object> circle = new LinkedHashMap<>();
+        circle.put("center", center);
+        circle.put("radius", (double) radius);
+        Map<String, Object> locationBias = new LinkedHashMap<>();
+        locationBias.put("circle", circle);
+        body.put("locationBias", locationBias);
+
+        if (pageToken != null && !pageToken.isBlank()) {
+            body.put("pageToken", pageToken);
+        }
+
+        return postToPlaces(":searchText", body, SEARCH_FIELD_MASK);
     }
 
     private String callPlaceDetails(String placeId, String sessionToken) {
-        String query = "place_id=" + encode(placeId)
-                + "&fields=" + encode(PLACE_DETAILS_FIELDS)
-                + "&language=en"
-                + (sessionToken != null && !sessionToken.isBlank() ? "&sessiontoken=" + encode(sessionToken) : "")
-                + "&key=" + apiKey;
-        return callGoogle(buildUri(PLACES_BASE_PATH + "/details/json", query));
-    }
-
-    private String callGoogle(URI uri) {
-        log.info("Google Places → {}", uri.toString().replace(apiKey, "<KEY>"));
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Goog-Api-Key", apiKey);
+        headers.set("X-Goog-FieldMask", DETAILS_FIELD_MASK);
+        if (sessionToken != null && !sessionToken.isBlank()) {
+            headers.set("X-Goog-Session-Token", sessionToken);
+        }
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        log.info("Google Places (New) Details → placeId={}", placeId);
         try {
-            String response = restTemplate.getForObject(uri, String.class);
-            String result = response != null ? response : "{}";
-            log.info("Google Places ← status snippet: {}",
-                    result.substring(0, Math.min(120, result.length())));
+            ResponseEntity<String> resp = restTemplate.exchange(
+                    URI.create(PLACES_BASE + "/" + placeId),
+                    HttpMethod.GET,
+                    entity,
+                    String.class
+            );
+            String result = resp.getBody() != null ? resp.getBody() : "{}";
+            log.info("Google Places ← snippet: {}", result.substring(0, Math.min(120, result.length())));
             return result;
         } catch (RestClientException ex) {
             throw new PlacesApiException("Google Places API unavailable: " + ex.getMessage());
         }
     }
 
-    private URI buildUri(String path, String encodedQuery) {
-        // query is already percent-encoded by our encode() helper — use URI.create() which
-        // treats the string as already valid so there is no double-encoding.
-        return URI.create("https://" + GOOGLE_HOST + path + "?" + encodedQuery);
+    private String postToPlaces(String pathSuffix, Map<String, Object> body, String fieldMask) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Goog-Api-Key", apiKey);
+            if (fieldMask != null && !fieldMask.isBlank()) {
+                headers.set("X-Goog-FieldMask", fieldMask);
+            }
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            String bodyJson = objectMapper.writeValueAsString(body);
+            HttpEntity<String> entity = new HttpEntity<>(bodyJson, headers);
+            log.info("Google Places (New) POST → {}{}", PLACES_BASE, pathSuffix);
+            ResponseEntity<String> resp = restTemplate.exchange(
+                    URI.create(PLACES_BASE + pathSuffix),
+                    HttpMethod.POST,
+                    entity,
+                    String.class
+            );
+            String result = resp.getBody() != null ? resp.getBody() : "{}";
+            log.info("Google Places ← snippet: {}", result.substring(0, Math.min(120, result.length())));
+            return result;
+        } catch (RestClientException ex) {
+            throw new PlacesApiException("Google Places API unavailable: " + ex.getMessage());
+        } catch (Exception ex) {
+            throw new PlacesApiException("Failed to build Places request: " + ex.getMessage());
+        }
     }
 
-    private static String encode(String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    private static boolean isSuccess(String json) {
+        // New API uses HTTP status codes for errors; a success body never contains "error"
+        return !json.contains("\"error\"");
     }
 }

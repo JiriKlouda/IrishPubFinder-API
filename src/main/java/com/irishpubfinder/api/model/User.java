@@ -17,8 +17,11 @@ public class User {
     @Id
     private String id;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = true)
     private String email;
+
+    @Column(name = "phone_number", unique = true)
+    private String phoneNumber;
 
     @Column(name = "display_name", length = 50)
     private String displayName;

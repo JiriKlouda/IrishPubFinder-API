@@ -1,5 +1,7 @@
 package com.irishpubfinder.api.service;
 
+import com.irishpubfinder.api.dto.ContactLookupResult;
+import com.irishpubfinder.api.dto.ContactsLookupRequest;
 import com.irishpubfinder.api.dto.FriendResponse;
 import com.irishpubfinder.api.dto.FriendSendRequest;
 import com.irishpubfinder.api.dto.PendingRequestResponse;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,8 +29,20 @@ public class FriendService {
 
     @Transactional
     public void sendRequest(String requesterId, FriendSendRequest request) {
-        User addressee = userRepository.findByEmail(request.email())
-            .orElseThrow(() -> new UserNotFoundException("No account found for that email address"));
+        User addressee;
+        if (request.userId() != null && !request.userId().isBlank()) {
+            addressee = userRepository.findById(request.userId())
+                .orElseThrow(() -> new UserNotFoundException("No account found"));
+        } else if (request.phoneNumber() != null && !request.phoneNumber().isBlank()) {
+            String phone = request.phoneNumber().trim().replaceAll("[\\s\\-()]", "");
+            addressee = userRepository.findByPhoneNumber(phone)
+                .orElseThrow(() -> new UserNotFoundException("No account found for that phone number"));
+        } else if (request.email() != null && !request.email().isBlank()) {
+            addressee = userRepository.findByEmail(request.email().toLowerCase().trim())
+                .orElseThrow(() -> new UserNotFoundException("No account found for that email address"));
+        } else {
+            throw new UserNotFoundException("No account found");
+        }
 
         if (addressee.getId().equals(requesterId)) {
             throw new DuplicateFriendRequestException("You cannot add yourself as a friend");
@@ -85,6 +100,20 @@ public class FriendService {
         }
 
         friendship.setStatus(FriendshipStatus.ACCEPTED);
+    }
+
+    public List<ContactLookupResult> findByPhoneNumbers(ContactsLookupRequest request) {
+        if (request.phoneNumbers() == null || request.phoneNumbers().isEmpty()) {
+            return List.of();
+        }
+        List<String> normalised = request.phoneNumbers().stream()
+            .filter(p -> p != null && !p.isBlank())
+            .map(p -> p.trim().replaceAll("[\\s\\-()]", ""))
+            .distinct()
+            .collect(Collectors.toList());
+        return userRepository.findByPhoneNumberIn(normalised).stream()
+            .map(u -> new ContactLookupResult(u.getPhoneNumber(), u.getId(), u.getDisplayName(), u.getEmail()))
+            .toList();
     }
 
     @Transactional

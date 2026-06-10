@@ -20,8 +20,9 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class PhotoProxyController {
 
-    // Only URL-safe characters — blocks path traversal via the R2 object key
-    private static final Pattern SAFE_REF = Pattern.compile("^[A-Za-z0-9_\\-]{1,500}$");
+    // New Places API photo name format: places/{placeId}/photos/{token}
+    private static final Pattern SAFE_REF = Pattern.compile(
+            "^places/[A-Za-z0-9_\\-]+/photos/[A-Za-z0-9_\\-]+$");
 
     private final GooglePlacesService placesService;
     private final R2StorageService r2;
@@ -39,19 +40,22 @@ public class PhotoProxyController {
         }
         maxwidth = Math.min(Math.max(maxwidth, 1), 1600);
 
-        if (r2.exists(ref)) {
-            log.debug("Photo cache HIT: {}", ref);
+        // Slashes in the photo name are replaced so the R2 key stays a flat path-safe string
+        String r2Key = ref.replace('/', '_');
+
+        if (r2.exists(r2Key)) {
+            log.debug("Photo cache HIT: {}", r2Key);
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create(r2.publicUrl(ref)))
+                    .location(URI.create(r2.publicUrl(r2Key)))
                     .build();
         }
 
         log.info("Photo cache MISS — fetching from Google: {}", ref);
         Object[] result = placesService.getPhotoBytes(ref, maxwidth);
-        r2.upload(ref, (byte[]) result[0], (String) result[1]);
+        r2.upload(r2Key, (byte[]) result[0], (String) result[1]);
 
         return ResponseEntity.status(HttpStatus.FOUND)
-                .location(URI.create(r2.publicUrl(ref)))
+                .location(URI.create(r2.publicUrl(r2Key)))
                 .build();
     }
 }

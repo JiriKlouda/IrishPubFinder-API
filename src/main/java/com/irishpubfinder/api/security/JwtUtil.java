@@ -24,14 +24,14 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
-    public String generateToken(String userId, String email) {
-        return Jwts.builder()
+    public String generateToken(String userId, String email, String phoneNumber) {
+        var builder = Jwts.builder()
             .subject(userId)
-            .claim("email", email)
             .issuedAt(new Date())
-            .expiration(new Date(System.currentTimeMillis() + expirationMs))
-            .signWith(signingKey())
-            .compact();
+            .expiration(new Date(System.currentTimeMillis() + expirationMs));
+        if (email != null) builder.claim("email", email);
+        if (phoneNumber != null) builder.claim("phone", phoneNumber);
+        return builder.signWith(signingKey()).compact();
     }
 
     public String extractUserId(String token) {
