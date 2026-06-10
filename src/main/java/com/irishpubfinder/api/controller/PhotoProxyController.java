@@ -1,5 +1,6 @@
 package com.irishpubfinder.api.controller;
 
+import com.irishpubfinder.api.service.ApiMetricsService;
 import com.irishpubfinder.api.service.GooglePlacesService;
 import com.irishpubfinder.api.service.R2StorageService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class PhotoProxyController {
 
     private final GooglePlacesService placesService;
     private final R2StorageService r2;
+    private final ApiMetricsService metrics;
 
     @GetMapping("/photo")
     public ResponseEntity<Void> photo(
@@ -45,12 +47,14 @@ public class PhotoProxyController {
 
         if (r2.exists(r2Key)) {
             log.debug("Photo cache HIT: {}", r2Key);
+            metrics.record(ApiMetricsService.PHOTO_R2);
             return ResponseEntity.status(HttpStatus.FOUND)
                     .location(URI.create(r2.publicUrl(r2Key)))
                     .build();
         }
 
         log.info("Photo cache MISS — fetching from Google: {}", ref);
+        metrics.record(ApiMetricsService.PHOTO_GOOGLE);
         Object[] result = placesService.getPhotoBytes(ref, maxwidth);
         r2.upload(r2Key, (byte[]) result[0], (String) result[1]);
 

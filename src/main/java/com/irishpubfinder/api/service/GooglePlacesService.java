@@ -43,11 +43,14 @@ public class GooglePlacesService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final PlaceSearchCacheRepository searchRepo;
     private final PlaceDetailsCacheRepository detailsRepo;
+    private final ApiMetricsService metrics;
 
     public GooglePlacesService(PlaceSearchCacheRepository searchRepo,
-                               PlaceDetailsCacheRepository detailsRepo) {
+                               PlaceDetailsCacheRepository detailsRepo,
+                               ApiMetricsService metrics) {
         this.searchRepo = searchRepo;
         this.detailsRepo = detailsRepo;
+        this.metrics = metrics;
     }
 
     @PostConstruct
@@ -64,8 +67,12 @@ public class GooglePlacesService {
             // "v2:" prefix distinguishes new-API cache entries from legacy-format entries
             String cellKey = String.format("v2:%.2f,%.2f,%d", lat, lng, radius);
             return searchRepo.findValid(cellKey, Instant.now())
-                    .map(PlaceSearchCache::getResponseJson)
+                    .map(cached -> {
+                        metrics.record(ApiMetricsService.NEARBY_SEARCH_CACHE);
+                        return cached.getResponseJson();
+                    })
                     .orElseGet(() -> {
+                        metrics.record(ApiMetricsService.NEARBY_SEARCH);
                         String json = callTextSearch(lat, lng, radius, null);
                         // Only cache complete result sets — if there's a nextPageToken the
                         // token would expire long before the 24-hour cache TTL
@@ -79,6 +86,7 @@ public class GooglePlacesService {
                         return json;
                     });
         }
+        metrics.record(ApiMetricsService.NEARBY_SEARCH);
         return callTextSearch(lat, lng, radius, pageToken);
     }
 
@@ -86,8 +94,12 @@ public class GooglePlacesService {
         // "v2:" prefix isolates new-API cached responses from legacy ones
         String cacheKey = "v2:" + placeId;
         return detailsRepo.findValid(cacheKey, Instant.now())
-                .map(PlaceDetailsCache::getResponseJson)
+                .map(cached -> {
+                    metrics.record(ApiMetricsService.PLACE_DETAILS_CACHE);
+                    return cached.getResponseJson();
+                })
                 .orElseGet(() -> {
+                    metrics.record(ApiMetricsService.PLACE_DETAILS);
                     String json = callPlaceDetails(placeId, sessionToken);
                     if (isSuccess(json)) {
                         PlaceDetailsCache entry = detailsRepo.findByPlaceId(cacheKey)
@@ -124,6 +136,7 @@ public class GooglePlacesService {
     }
 
     public String getAutocomplete(String input, String sessionToken) {
+        metrics.record(ApiMetricsService.AUTOCOMPLETE);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("input", input);
         body.put("languageCode", "en");
