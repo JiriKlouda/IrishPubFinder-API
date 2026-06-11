@@ -12,4 +12,6 @@ public interface PlaceSearchCacheRepository extends JpaRepository<PlaceSearchCac
 
     @Query("SELECT c FROM PlaceSearchCache c WHERE c.cellKey = :key AND c.expiresAt > :now")
     Optional<PlaceSearchCache> findValid(@Param("key") String key, @Param("now") Instant now);
+
+    Optional<PlaceSearchCache> findByCellKey(String cellKey);
 }

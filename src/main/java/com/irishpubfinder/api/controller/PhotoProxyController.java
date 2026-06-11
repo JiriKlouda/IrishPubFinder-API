@@ -42,8 +42,11 @@ public class PhotoProxyController {
         }
         maxwidth = Math.min(Math.max(maxwidth, 1), 1600);
 
-        // Slashes in the photo name are replaced so the R2 key stays a flat path-safe string
-        String r2Key = ref.replace('/', '_');
+        // Key by the stable placeId, not the full photo name. The new Places API regenerates
+        // the photo-name token on every search, so keying by it would always miss the cache.
+        // ref is "places/{placeId}/photos/{token}" (already validated by SAFE_REF).
+        String placeId = ref.split("/")[1];
+        String r2Key = "place_" + placeId;
 
         if (r2.exists(r2Key)) {
             log.debug("Photo cache HIT: {}", r2Key);

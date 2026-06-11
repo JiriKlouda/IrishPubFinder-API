@@ -20,7 +20,7 @@ import java.net.URI;
 @Service
 public class R2StorageService {
 
-    private static final String PREFIX = "photos/";
+    private static final String PREFIX = "places/photos/";
 
     @Value("${r2.account.id}")
     private String accountId;
