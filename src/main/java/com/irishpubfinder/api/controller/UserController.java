@@ -3,9 +3,11 @@ package com.irishpubfinder.api.controller;
 import com.irishpubfinder.api.dto.UpdateEmailRequest;
 import com.irishpubfinder.api.dto.UpdateNameRequest;
 import com.irishpubfinder.api.dto.UpdatePhoneRequest;
+import com.irishpubfinder.api.dto.UserMeResponse;
 import com.irishpubfinder.api.exception.EmailAlreadyExistsException;
 import com.irishpubfinder.api.exception.PhoneAlreadyExistsException;
 import com.irishpubfinder.api.repository.UserRepository;
+import com.irishpubfinder.api.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,18 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final AuthService authService;
+
+    @GetMapping("/me")
+    public ResponseEntity<UserMeResponse> me(@AuthenticationPrincipal String userId) {
+        return userRepository.findById(userId)
+            // Apply the admin allowlist here too, so an allowlisted account is promoted on
+            // the next app launch (refreshMe) without needing to sign out and back in.
+            .map(authService::ensureAdminAllowlist)
+            .<ResponseEntity<UserMeResponse>>map(u -> ResponseEntity.ok(new UserMeResponse(
+                u.getId(), u.getEmail(), u.getPhoneNumber(), u.getDisplayName(), u.roleOrDefault().name())))
+            .orElseGet(() -> ResponseEntity.notFound().build());
+    }
 
     @PatchMapping("/me")
     public ResponseEntity<Void> updateName(

@@ -5,6 +5,8 @@ import com.irishpubfinder.api.model.ApiCallLog;
 import com.irishpubfinder.api.repository.ApiCallLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -29,10 +31,18 @@ public class ApiMetricsService {
     /** Records one API call event. Never throws — metrics must not break request handling. */
     public void record(String callType) {
         try {
-            repo.save(ApiCallLog.builder().callType(callType).build());
+            repo.save(ApiCallLog.builder().callType(callType).userId(currentUserId()).build());
         } catch (Exception e) {
             log.warn("Failed to record API metric (type={}): {}", callType, e.getMessage());
         }
+    }
+
+    /** The authenticated user on the current request thread, or null (e.g. the public photo endpoint). */
+    private String currentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        Object principal = auth.getPrincipal();
+        return (principal instanceof String s && !"anonymousUser".equals(s)) ? s : null;
     }
 
     public MetricsSummaryDto getSummary() {

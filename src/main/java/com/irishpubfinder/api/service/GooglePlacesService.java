@@ -242,6 +242,30 @@ public class GooglePlacesService {
         }
     }
 
+    /**
+     * Resolves a CURRENT first-photo resource name for a place via Place Details. Used to
+     * recover when a stored photo token has gone stale (e.g. an old saved visit) — the photo
+     * token in a saved URL expires, but the placeId is permanent. Returns null if the place
+     * has no photo or the lookup fails.
+     */
+    public String getFirstPhotoName(String placeId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Goog-Api-Key", apiKey);
+        headers.set("X-Goog-FieldMask", "id,photos");
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        try {
+            metrics.record(ApiMetricsService.PLACE_DETAILS);
+            ResponseEntity<String> resp = restTemplate.exchange(
+                    URI.create(PLACES_BASE + "/" + placeId), HttpMethod.GET, entity, String.class);
+            JsonNode name = objectMapper.readTree(resp.getBody() != null ? resp.getBody() : "{}")
+                    .path("photos").path(0).path("name");
+            return name.isMissingNode() || name.isNull() ? null : name.asText();
+        } catch (Exception ex) {
+            log.warn("Could not resolve fresh photo name for place {}: {}", placeId, ex.getMessage());
+            return null;
+        }
+    }
+
     public String getAutocomplete(String input, String sessionToken) {
         metrics.record(ApiMetricsService.AUTOCOMPLETE);
         Map<String, Object> body = new LinkedHashMap<>();

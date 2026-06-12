@@ -1,5 +1,6 @@
 package com.irishpubfinder.api.controller;
 
+import com.irishpubfinder.api.exception.PlacesApiException;
 import com.irishpubfinder.api.service.ApiMetricsService;
 import com.irishpubfinder.api.service.GooglePlacesService;
 import com.irishpubfinder.api.service.R2StorageService;
@@ -57,12 +58,39 @@ public class PhotoProxyController {
         }
 
         log.info("Photo cache MISS — fetching from Google: {}", ref);
-        metrics.record(ApiMetricsService.PHOTO_GOOGLE);
-        Object[] result = placesService.getPhotoBytes(ref, maxwidth);
+        Object[] result = fetchPhotoBytes(ref, placeId, maxwidth);
+        if (result == null) {
+            return ResponseEntity.notFound().build();
+        }
         r2.upload(r2Key, (byte[]) result[0], (String) result[1]);
 
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(r2.publicUrl(r2Key)))
                 .build();
+    }
+
+    /**
+     * Fetches the photo bytes for a cold cache miss. Tries the supplied ref first; if its token
+     * is stale (common for old saved visits, whose stored photo token has since expired), it
+     * re-resolves a current photo name for the place via Place Details and retries. Returns null
+     * if no photo can be obtained.
+     */
+    private Object[] fetchPhotoBytes(String ref, String placeId, int maxwidth) {
+        metrics.record(ApiMetricsService.PHOTO_GOOGLE);
+        try {
+            return placesService.getPhotoBytes(ref, maxwidth);
+        } catch (PlacesApiException ex) {
+            log.info("Stale photo ref for place {} — re-resolving via place details", placeId);
+            String freshRef = placesService.getFirstPhotoName(placeId);
+            if (freshRef == null) {
+                return null;
+            }
+            try {
+                return placesService.getPhotoBytes(freshRef, maxwidth);
+            } catch (PlacesApiException retryEx) {
+                log.warn("Photo unavailable for place {} after re-resolve: {}", placeId, retryEx.getMessage());
+                return null;
+            }
+        }
     }
 }
