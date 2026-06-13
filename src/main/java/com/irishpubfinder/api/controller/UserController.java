@@ -7,9 +7,11 @@ import com.irishpubfinder.api.dto.UserMeResponse;
 import com.irishpubfinder.api.exception.EmailAlreadyExistsException;
 import com.irishpubfinder.api.exception.PhoneAlreadyExistsException;
 import com.irishpubfinder.api.repository.UserRepository;
+import com.irishpubfinder.api.service.AccountDeletionService;
 import com.irishpubfinder.api.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +23,7 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final AuthService authService;
+    private final AccountDeletionService accountDeletionService;
 
     @GetMapping("/me")
     public ResponseEntity<UserMeResponse> me(@AuthenticationPrincipal String userId) {
@@ -65,6 +68,12 @@ public class UserController {
             userRepository.save(user);
         });
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal String userId) {
+        accountDeletionService.deleteAccount(userId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     @PatchMapping("/me/email")

@@ -17,4 +17,6 @@ public interface FavouriteRepository extends JpaRepository<Favourite, Long> {
     void deleteByUserIdAndPlaceId(String userId, String placeId);
 
     long countByUserId(String userId);
+
+    void deleteAllByUserId(String userId);
 }

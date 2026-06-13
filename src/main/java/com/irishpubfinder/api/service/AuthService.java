@@ -89,6 +89,14 @@ public class AuthService {
         return toAuthResponse(jwtUtil.generateToken(user.getId(), user.getEmail(), user.getPhoneNumber()), user);
     }
 
+    /** Issues a fresh token for an existing user. Called by the refresh endpoint. */
+    public AuthResponse refresh(String userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(InvalidCredentialsException::new);
+        user = ensureAdminAllowlist(user);
+        return toAuthResponse(jwtUtil.generateToken(user.getId(), user.getEmail(), user.getPhoneNumber()), user);
+    }
+
     public AuthResponse login(LoginRequest request) {
         String email = normalise(request.email());
         String phone = normalisePhone(request.phoneNumber());

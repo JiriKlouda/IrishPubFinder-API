@@ -22,4 +22,6 @@ public interface BadgeEventRepository extends JpaRepository<BadgeEvent, Long> {
     List<BadgeEvent> findPageByUserIds(@Param("userIds") List<String> userIds,
                                        @Param("before") LocalDateTime before,
                                        Pageable pageable);
+
+    void deleteAllByUserId(String userId);
 }

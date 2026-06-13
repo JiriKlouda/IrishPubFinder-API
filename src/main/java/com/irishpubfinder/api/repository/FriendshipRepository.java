@@ -17,4 +17,6 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Long> {
 
     @Query("SELECT COUNT(f) > 0 FROM Friendship f WHERE (f.requesterId = :a AND f.addresseeId = :b) OR (f.requesterId = :b AND f.addresseeId = :a)")
     boolean existsBetweenUsers(@Param("a") String a, @Param("b") String b);
+
+    void deleteByRequesterIdOrAddresseeId(String requesterId, String addresseeId);
 }

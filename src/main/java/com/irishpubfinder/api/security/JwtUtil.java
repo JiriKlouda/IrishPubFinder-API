@@ -1,6 +1,7 @@
 package com.irishpubfinder.api.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -44,6 +45,20 @@ public class JwtUtil {
             return true;
         } catch (JwtException | IllegalArgumentException e) {
             return false;
+        }
+    }
+
+    /**
+     * Extracts the user ID even from an expired token. Returns null if the token is
+     * structurally invalid or unsigned. Used exclusively by the refresh endpoint.
+     */
+    public String extractUserIdAllowingExpired(String token) {
+        try {
+            return parseClaims(token).getSubject();
+        } catch (ExpiredJwtException e) {
+            return e.getClaims().getSubject();
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
         }
     }
 

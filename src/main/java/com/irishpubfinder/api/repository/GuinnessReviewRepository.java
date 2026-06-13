@@ -10,4 +10,6 @@ public interface GuinnessReviewRepository extends JpaRepository<GuinnessReview, 
     List<GuinnessReview> findByPlaceId(String placeId);
     Optional<GuinnessReview> findByUserIdAndPlaceId(String userId, String placeId);
     long countByUserId(String userId);
+
+    void deleteAllByUserId(String userId);
 }

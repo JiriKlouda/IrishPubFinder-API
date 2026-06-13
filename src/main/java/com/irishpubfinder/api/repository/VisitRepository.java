@@ -33,6 +33,8 @@ public interface VisitRepository extends JpaRepository<Visit, Long> {
     @Query("SELECT COUNT(DISTINCT v.city) FROM Visit v WHERE v.userId = :userId AND v.city IS NOT NULL")
     long countDistinctCitiesByUserId(@Param("userId") String userId);
 
+    void deleteAllByUserId(String userId);
+
     @Query("SELECT v FROM Visit v WHERE v.userId IN :userIds AND v.createdAt < :before ORDER BY v.createdAt DESC")
     List<Visit> findPageByUserIds(@Param("userIds") List<String> userIds,
                                   @Param("before") LocalDateTime before,
